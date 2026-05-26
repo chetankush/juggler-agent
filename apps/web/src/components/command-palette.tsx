@@ -442,7 +442,7 @@ export function CommandPalette({
         </div>
 
         {/* Command list */}
-        <div className="max-h-[360px] overflow-y-auto overscroll-contain">
+        <div className="max-h-[min(60dvh,560px)] overflow-y-auto overscroll-contain">
           {allCommands.length === 0 ? (
             <div className="px-4 py-8 text-center text-sm text-muted-foreground">
               No commands match &ldquo;{query}&rdquo;

@@ -392,14 +392,14 @@ export default function DashboardPage() {
   return (
     <>
       {/* Page header — primary CTA + standup action */}
-      <div className="mb-8 flex items-start justify-between gap-4">
+      <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Dashboard</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Your tasks, extracted from Discord — stay in control.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 self-start sm:self-auto">
           <Button
             size="sm"
             variant="outline"
