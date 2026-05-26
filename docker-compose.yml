@@ -1,0 +1,58 @@
+# Local development dependencies.
+#
+# For dev we run BOTH the database and Redis in Docker, on NON-default host
+# ports so they don't clash with any Postgres/Redis already on your machine:
+#
+#   Postgres (pgvector)  ->  localhost:5435   (container 5432)
+#   Redis                ->  localhost:6382   (container 6379)
+#
+# Usage:
+#   docker compose up -d          # start postgres + redis
+#   docker compose ps             # check health
+#   docker compose down           # stop (keeps data)
+#   docker compose down -v        # stop AND wipe data
+#
+# Matching .env values (already the defaults in .env.example):
+#   DATABASE_URL=postgresql://aicrm:aicrm@localhost:5435/aicrm
+#   REDIS_URL=redis://localhost:6382
+#
+# Supabase (cloud) is still used for Auth only — see docs/API_KEYS.md.
+services:
+  postgres:
+    image: pgvector/pgvector:pg16 # Postgres 16 with the pgvector extension built in
+    container_name: aicrm-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: aicrm
+      POSTGRES_PASSWORD: aicrm
+      POSTGRES_DB: aicrm
+    ports:
+      - "5435:5432"
+    volumes:
+      - aicrm-postgres-data:/var/lib/postgresql/data
+      # Enables the `vector` extension on first init.
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aicrm -d aicrm"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: aicrm-redis
+    restart: unless-stopped
+    ports:
+      - "6382:6379"
+    volumes:
+      - aicrm-redis-data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  aicrm-postgres-data:
+  aicrm-redis-data:

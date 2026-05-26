@@ -1,0 +1,20 @@
+# Files to exclude from the packaged .vsix
+
+# Source files (esbuild bundles everything into dist/)
+src/
+esbuild.js
+tsconfig.json
+
+# Dev artifacts
+node_modules/
+*.map
+
+# Root config files not needed at runtime
+.eslintrc*
+.prettierrc*
+*.test.ts
+*.spec.ts
+
+# CI / project management
+.github/
+.turbo/

@@ -1,0 +1,21 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+allowBuilds:
+  '@vscode/vsce-sign': true
+  esbuild: true
+  keytar: true
+  msgpackr-extract: true
+  sharp: true
+  unrs-resolver: true
+
+# Native deps whose install/build scripts are allowed to run.
+# These ship prebuilt binaries (via prebuild-install), so they're safe.
+onlyBuiltDependencies:
+  - esbuild
+  - sharp
+  - "@vscode/vsce-sign"
+  - keytar
+  - msgpackr-extract
+  - unrs-resolver

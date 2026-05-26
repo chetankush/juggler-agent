@@ -1,0 +1,181 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Design-system color tokens (from DESIGN_SYSTEM.md)
+   All values converted to HSL so Tailwind's opacity modifier works.
+   Dark mode is the default — `.dark` class applied to <html> by default.
+───────────────────────────────────────────────────────────────────────────── */
+
+@layer base {
+  /* ── Light theme ─────────────────────────────────────────────────────── */
+  :root {
+    /* Backgrounds & surfaces */
+    --background: 210 40% 98%;          /* #f8fafc */
+    --surface: 0 0% 100%;               /* #ffffff  card default */
+    --surface-muted: 210 40% 96%;       /* #f1f5f9 */
+    --card: 0 0% 100%;                  /* #ffffff */
+    --card-foreground: 222 47% 11%;     /* #0f172a */
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* Text */
+    --foreground: 222 47% 11%;          /* #0f172a  15.8:1 on bg */
+    --muted-foreground: 215 16% 47%;    /* #64748b  4.6:1 on bg  */
+
+    /* Primary brand / CTA */
+    --primary: 243 75% 59%;             /* #4f46e5 */
+    --primary-foreground: 0 0% 100%;    /* #ffffff */
+
+    /* Secondary / subtle actions */
+    --secondary: 210 40% 96%;           /* #f1f5f9 */
+    --secondary-foreground: 222 47% 11%;
+
+    /* Muted fills */
+    --muted: 210 40% 96%;               /* #f1f5f9 */
+
+    /* Accent (same as primary for now) */
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+
+    /* Destructive */
+    --destructive: 0 72% 51%;           /* #dc2626 */
+    --destructive-foreground: 0 0% 100%;
+
+    /* Borders & inputs */
+    --border: 214 32% 91%;              /* #e2e8f0 */
+    --input: 214 32% 91%;
+
+    /* Focus ring */
+    --ring: 239 84% 67%;                /* #6366f1 */
+
+    /* ── Semantic intent tokens ────────────────────────────────────────── */
+    --success: 161 94% 30%;             /* #059669 */
+    --warning: 32 95% 44%;              /* #d97706 */
+    --danger: 0 72% 51%;                /* #dc2626 */
+    --info: 221 83% 53%;                /* #2563eb */
+
+    /* Radius */
+    --radius: 0.5rem;                   /* 8px — md default */
+  }
+
+  /* ── Dark theme (default via ThemeProvider) ──────────────────────────── */
+  .dark {
+    /* Backgrounds & surfaces */
+    --background: 220 26% 7%;           /* #0b0e14 */
+    --surface: 220 24% 9%;              /* #11151c */
+    --surface-muted: 218 23% 11%;       /* #161b22 */
+    --card: 220 24% 9%;                 /* #11151c */
+    --card-foreground: 210 25% 93%;     /* #e6edf3 */
+    --popover: 220 24% 9%;
+    --popover-foreground: 210 25% 93%;
+
+    /* Text */
+    --foreground: 210 25% 93%;          /* #e6edf3  14.1:1 on bg */
+    --muted-foreground: 213 10% 59%;    /* #8b949e  5.2:1 on bg  */
+
+    /* Primary brand / CTA */
+    --primary: 238 100% 74%;            /* #7c83ff */
+    --primary-foreground: 220 26% 7%;   /* #0b0e14 */
+
+    /* Secondary / subtle actions */
+    --secondary: 218 23% 11%;           /* #161b22 */
+    --secondary-foreground: 210 25% 93%;
+
+    /* Muted fills */
+    --muted: 218 23% 11%;               /* #161b22 */
+
+    /* Accent */
+    --accent: 218 23% 11%;
+    --accent-foreground: 210 25% 93%;
+
+    /* Destructive */
+    --destructive: 0 91% 71%;           /* #f87171 */
+    --destructive-foreground: 220 26% 7%;
+
+    /* Borders & inputs */
+    --border: 218 22% 18%;              /* #232a35 */
+    --input: 218 22% 18%;
+
+    /* Focus ring */
+    --ring: 238 100% 74%;               /* #7c83ff */
+
+    /* ── Semantic intent tokens ────────────────────────────────────────── */
+    --success: 158 64% 52%;             /* #34d399 */
+    --warning: 48 96% 56%;              /* #fbbf24 */
+    --danger: 0 91% 71%;                /* #f87171 */
+    --info: 213 94% 68%;                /* #60a5fa */
+  }
+
+  /* ── Base resets ─────────────────────────────────────────────────────── */
+  * {
+    @apply border-border;
+  }
+
+  html {
+    /* Prevent layout shift from scrollbar */
+    scrollbar-gutter: stable;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    /* 16px body base — avoids iOS auto-zoom on inputs */
+    font-size: 1rem;
+    line-height: 1.5;
+    /* min-h-dvh not 100vh — handles iOS toolbar */
+    min-height: 100dvh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* ── Focus rings — NEVER remove, always visible ──────────────────────── */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  /* ── Typography ──────────────────────────────────────────────────────── */
+  h1, h2, h3, h4, h5, h6 {
+    line-height: 1.25;
+    font-weight: 600;
+  }
+
+  /* ── Reduced motion ─────────────────────────────────────────────────── */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* ── Utility: skeleton shimmer ─────────────────────────────────────────── */
+@layer utilities {
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted)) 25%,
+      hsl(var(--surface-muted)) 50%,
+      hsl(var(--muted)) 75%
+    );
+    background-size: 200% 100%;
+    @apply animate-shimmer rounded-md;
+  }
+
+  /* Tabular numbers for mono data (deadlines, IDs) */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+
+  /* Mono text helper */
+  .mono {
+    font-family: var(--font-jetbrains-mono), ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+}

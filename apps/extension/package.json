@@ -1,0 +1,148 @@
+{
+  "name": "@aicrm/extension",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI Sync Copilot — VS Code extension for task visibility and repo-aware explanations",
+  "displayName": "AI Sync Copilot",
+  "publisher": "aicrm",
+  "license": "MIT",
+  "main": "./dist/extension.js",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished"],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "aicrm-sidebar",
+          "title": "AI Sync Copilot",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "aicrm-sidebar": [
+        {
+          "id": "aicrm.tasks",
+          "name": "Tasks",
+          "when": "true"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "aicrm.signIn",
+        "title": "AI Sync Copilot: Sign In"
+      },
+      {
+        "command": "aicrm.signOut",
+        "title": "AI Sync Copilot: Sign Out"
+      },
+      {
+        "command": "aicrm.refreshTasks",
+        "title": "Refresh Tasks",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "aicrm.explainTask",
+        "title": "Explain Task",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "aicrm.markComplete",
+        "title": "Mark Complete",
+        "icon": "$(check)"
+      },
+      {
+        "command": "aicrm.markBlocked",
+        "title": "Mark Blocked",
+        "icon": "$(warning)"
+      },
+      {
+        "command": "aicrm.snoozeTask",
+        "title": "Snooze Task",
+        "icon": "$(bell-slash)"
+      },
+      {
+        "command": "aicrm.indexRepo",
+        "title": "AI Sync Copilot: Index Repository"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "aicrm.refreshTasks",
+          "when": "view == aicrm.tasks && aicrm.isSignedIn",
+          "group": "navigation"
+        },
+        {
+          "command": "aicrm.signIn",
+          "when": "view == aicrm.tasks && !aicrm.isSignedIn",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "aicrm.explainTask",
+          "when": "view == aicrm.tasks && viewItem == taskItem",
+          "group": "inline@1"
+        },
+        {
+          "command": "aicrm.markComplete",
+          "when": "view == aicrm.tasks && viewItem == taskItem",
+          "group": "inline@2"
+        },
+        {
+          "command": "aicrm.markBlocked",
+          "when": "view == aicrm.tasks && viewItem == taskItem",
+          "group": "inline@3"
+        },
+        {
+          "command": "aicrm.snoozeTask",
+          "when": "view == aicrm.tasks && viewItem == taskItem",
+          "group": "inline@4"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "AI Sync Copilot",
+      "properties": {
+        "aicrm.apiBaseUrl": {
+          "type": "string",
+          "default": "http://localhost:3001",
+          "description": "Base URL of the AI Sync Copilot API server."
+        },
+        "aicrm.webBaseUrl": {
+          "type": "string",
+          "default": "http://localhost:3000",
+          "description": "Base URL of the AI Sync Copilot web app (used for the sign-in page)."
+        },
+        "aicrm.pollIntervalSeconds": {
+          "type": "number",
+          "default": 30,
+          "minimum": 10,
+          "description": "How often (in seconds) the extension polls the API for task updates."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.js",
+    "watch": "node esbuild.js --watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'lint: no linter configured'",
+    "package": "vsce package"
+  },
+  "dependencies": {
+    "@aicrm/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.95.0",
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "esbuild": "^0.24.2",
+    "@vscode/vsce": "^3.2.1"
+  }
+}
