@@ -17,6 +17,40 @@ export interface User {
   name: string | null;
   /** Discord user id — set when the user links their Discord identity. */
   discordId: string | null;
+  /** IANA timezone (e.g. "America/Los_Angeles"). Used for per-user EOD. */
+  timezone: string;
+}
+
+/** A workspace member (mirrors `workspace_members`). */
+export interface WorkspaceMember {
+  workspaceId: string;
+  userId: string;
+  role: "owner" | "member";
+  joinedAt: string;
+  user: User;
+}
+
+/** A pending invite (mirrors `workspace_invites`). */
+export interface WorkspaceInvite {
+  id: string;
+  workspaceId: string;
+  email: string;
+  status: "pending" | "accepted" | "cancelled";
+  createdAt: string;
+}
+
+/** Analytics payload (`GET /workspaces/:id/analytics`). */
+export interface WorkspaceAnalytics {
+  tasksByStatus: { active: number; blocked: number; completed: number };
+  tasksByPriority: { high: number; medium: number; low: number };
+  /** Last 14 days, oldest first. */
+  throughput14d: Array<{ date: string; completed: number }>;
+  perMember: Array<{
+    user: Pick<User, "id" | "email" | "name">;
+    total: number;
+    active: number;
+    completed: number;
+  }>;
 }
 
 /** Per-workspace configurable settings (stored as JSONB on `workspaces`). */

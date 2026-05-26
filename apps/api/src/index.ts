@@ -16,6 +16,7 @@ import { env } from "./lib/env.js";
 import { healthRoutes } from "./routes/health.js";
 import { meRoutes } from "./routes/me.js";
 import { workspaceRoutes } from "./routes/workspaces.js";
+import { memberRoutes } from "./routes/members.js";
 import { integrationRoutes } from "./routes/integrations.js";
 import { taskRoutes } from "./routes/tasks.js";
 import { discordRoutes } from "./routes/discord.js";
@@ -25,7 +26,7 @@ import { startRemindersWorker } from "./queues/reminders.queue.js";
 import { startEmbeddingsWorker } from "./queues/embeddings.queue.js";
 import { startDiscordBot, postStandupToWorkspace } from "./discord/bot.js";
 import { db } from "./db/client.js";
-import { workspaces } from "./db/schema.js";
+import { workspaces, users } from "./db/schema.js";
 import { scheduleReminders } from "./services/reminders.js";
 import { eq } from "drizzle-orm";
 
@@ -74,6 +75,7 @@ async function build() {
   await app.register(healthRoutes);
   await app.register(meRoutes);
   await app.register(workspaceRoutes);
+  await app.register(memberRoutes);
   await app.register(integrationRoutes);
   await app.register(taskRoutes);
   await app.register(discordRoutes);
@@ -116,31 +118,76 @@ async function main() {
   });
 
   // ── End-of-day standup auto-post ─────────────────────────────────────────────
-  // Every N minutes: for each workspace linked to Discord whose `workingHoursEnd`
-  // (UTC) has passed today and which hasn't been posted today yet, post the
-  // standup and stamp `lastStandupAt` for dedup across restarts.
+  // Every N minutes: for each Discord-linked workspace whose owner's local time
+  // has passed `workingHoursEnd` today and which hasn't been posted today yet,
+  // post the standup and stamp `lastStandupAt`.
   const EOD_SCAN_MIN = Number(process.env["EOD_SCAN_MIN"] ?? "5");
   const eodCheck = async () => {
     try {
       const allWs = await db.select().from(workspaces);
       const now = new Date();
-      const todayUTC = now.toISOString().slice(0, 10);
-      const hhmm = now.toISOString().slice(11, 16); // "HH:MM" UTC
       for (const ws of allWs) {
         if (!ws.discordGuildId) continue;
-        const eod = ws.settings?.workingHoursEnd ?? "18:00";
+
+        // Load the owner's timezone to compute their local time.
+        const [ownerRow] = await db
+          .select({ timezone: users.timezone })
+          .from(users)
+          .where(eq(users.id, ws.ownerId))
+          .limit(1);
+        const ownerTz = ownerRow?.timezone ?? "UTC";
+
+        // Owner's current local HH:MM (24h).
+        const hhmm = new Intl.DateTimeFormat("en-GB", {
+          timeZone: ownerTz,
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        }).format(now);
+
+        const eod = (ws.settings as { workingHoursEnd?: string } | null)?.workingHoursEnd ?? "18:00";
         if (hhmm < eod) continue;
+
+        // Owner's current local date (YYYY-MM-DD) for dedup.
+        const { year, month, day } = new Intl.DateTimeFormat("en-GB", {
+          timeZone: ownerTz,
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        })
+          .formatToParts(now)
+          .reduce<Record<string, string>>((acc, p) => {
+            if (p.type !== "literal") acc[p.type] = p.value;
+            return acc;
+          }, {}) as { year: string; month: string; day: string };
+        const todayOwner = `${year}-${month}-${day}`;
+
         const lastDay = ws.lastStandupAt
-          ? ws.lastStandupAt.toISOString().slice(0, 10)
+          ? (() => {
+              const lp = new Intl.DateTimeFormat("en-GB", {
+                timeZone: ownerTz,
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
+              })
+                .formatToParts(ws.lastStandupAt)
+                .reduce<Record<string, string>>((acc, p) => {
+                  if (p.type !== "literal") acc[p.type] = p.value;
+                  return acc;
+                }, {});
+              return `${lp["year"]}-${lp["month"]}-${lp["day"]}`;
+            })()
           : null;
-        if (lastDay === todayUTC) continue;
+
+        if (lastDay === todayOwner) continue;
+
         try {
           await postStandupToWorkspace(ws.id);
           await db
             .update(workspaces)
             .set({ lastStandupAt: now })
             .where(eq(workspaces.id, ws.id));
-          app.log.info(`Auto-EOD standup posted for workspace ${ws.id}`);
+          app.log.info(`Auto-EOD standup posted for workspace ${ws.id} (owner TZ: ${ownerTz})`);
         } catch (err) {
           app.log.warn({ err: (err as Error).message }, `Auto-EOD failed for ${ws.id}`);
         }

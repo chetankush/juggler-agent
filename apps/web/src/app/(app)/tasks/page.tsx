@@ -24,11 +24,13 @@ import {
   RefreshCw,
   AlertCircle,
   ListTodo,
+  Search,
 } from "lucide-react";
 import { TaskCard } from "@/components/task-card";
 import { TaskDetailDrawer } from "@/components/task-detail-drawer";
 import { CreateTaskModal } from "@/components/create-task-modal";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAppContext } from "@/lib/app-context";
@@ -210,6 +212,7 @@ export default function TasksPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const [filter, setFilter] = useState<FilterTab>("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
@@ -242,15 +245,22 @@ export default function TasksPage() {
     fetchTasks();
   }, [fetchTasks]);
 
-  // ── Derived task list based on active filter ─────────────────────────────
+  // ── Derived task list based on active filter + search ───────────────────
 
   const filteredTasks = useMemo((): Task[] => {
     if (!grouped) return [];
-    if (filter === "all") {
-      return [...grouped.active, ...grouped.blocked, ...grouped.completed];
-    }
-    return grouped[filter];
-  }, [grouped, filter]);
+    const base: Task[] =
+      filter === "all"
+        ? [...grouped.active, ...grouped.blocked, ...grouped.completed]
+        : grouped[filter];
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return base;
+    return base.filter(
+      (t) =>
+        t.title.toLowerCase().includes(q) ||
+        (t.description?.toLowerCase().includes(q) ?? false),
+    );
+  }, [grouped, filter, searchQuery]);
 
   // ── Tab count badges ─────────────────────────────────────────────────────
 
@@ -387,6 +397,23 @@ export default function TasksPage() {
         </Button>
       </div>
 
+      {/* Search bar */}
+      <div className="mb-4 relative">
+        <Search
+          className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none"
+          aria-hidden="true"
+          strokeWidth={1.5}
+        />
+        <Input
+          type="search"
+          placeholder="Search tasks by title or description…"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-9"
+          aria-label="Search tasks"
+        />
+      </div>
+
       {/* Filter tabs — segmented control */}
       <div
         className="mb-6 flex gap-1 rounded-lg border border-border bg-card p-1"
@@ -432,7 +459,18 @@ export default function TasksPage() {
         role="tabpanel"
         aria-live="polite"
       >
-        {filteredTasks.length === 0 ? (
+        {filteredTasks.length === 0 && searchQuery.trim() ? (
+          <div
+            className="flex flex-col items-center justify-center gap-2 py-12 text-center"
+            role="status"
+            aria-live="polite"
+          >
+            <Search className="h-8 w-8 text-muted-foreground/40" strokeWidth={1.2} aria-hidden="true" />
+            <p className="text-sm text-muted-foreground">
+              No matches for <span className="font-medium text-foreground">&ldquo;{searchQuery}&rdquo;</span>
+            </p>
+          </div>
+        ) : filteredTasks.length === 0 ? (
           <EmptyState filter={filter} onNewTask={() => setCreateOpen(true)} />
         ) : (
           <ul className="flex flex-col gap-3" role="list">
