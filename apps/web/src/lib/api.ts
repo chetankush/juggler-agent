@@ -18,6 +18,9 @@ import type {
   TaskExplanation,
   DiscordIntegrationStatus,
   WorkspaceSettings,
+  WorkspaceMember,
+  WorkspaceInvite,
+  WorkspaceAnalytics,
 } from "@aicrm/shared";
 import type { CreateTaskInput, UpdateTaskInput } from "@aicrm/shared";
 
@@ -282,4 +285,34 @@ export async function linkDiscordId(discordId: string | null): Promise<void> {
 
 export async function postStandupToDiscord(workspaceId: string): Promise<{ ok: true }> {
   return apiFetch<{ ok: true }>("/summary/post", { method: "POST", body: { workspaceId } });
+}
+
+// ── Timezone ────────────────────────────────────────────────────────────────
+
+export async function updateTimezone(timezone: string): Promise<void> {
+  return apiFetch<void>("/me/timezone", { method: "PATCH", body: { timezone } });
+}
+
+// ── Workspace Members & Invites ────────────────────────────────────────────
+
+export async function getMembers(workspaceId: string): Promise<WorkspaceMember[]> {
+  return apiFetch<WorkspaceMember[]>(`/workspaces/${workspaceId}/members`);
+}
+
+export async function listInvites(workspaceId: string): Promise<WorkspaceInvite[]> {
+  return apiFetch<WorkspaceInvite[]>(`/workspaces/${workspaceId}/invites`);
+}
+
+export async function createInvite(workspaceId: string, email: string): Promise<WorkspaceInvite> {
+  return apiFetch<WorkspaceInvite>(`/workspaces/${workspaceId}/invites`, { method: "POST", body: { email } });
+}
+
+export async function deleteInvite(workspaceId: string, inviteId: string): Promise<{ ok: true }> {
+  return apiFetch<{ ok: true }>(`/workspaces/${workspaceId}/invites/${inviteId}`, { method: "DELETE" });
+}
+
+// ── Analytics ───────────────────────────────────────────────────────────────
+
+export async function getAnalytics(workspaceId: string): Promise<WorkspaceAnalytics> {
+  return apiFetch<WorkspaceAnalytics>(`/workspaces/${workspaceId}/analytics`);
 }

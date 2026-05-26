@@ -5,7 +5,11 @@ import { useRouter } from "next/navigation";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Topbar } from "@/components/topbar";
 import { AppProvider, useAppContext } from "@/lib/app-context";
+import { CommandPalette, useCommandPalette } from "@/components/command-palette";
+import { CreateTaskModal } from "@/components/create-task-modal";
+import { StandupModal } from "@/components/standup-modal";
 import { cn } from "@/lib/utils";
+import type { Task } from "@aicrm/shared";
 
 // ── App-shell skeleton ──────────────────────────────────────────────────────
 
@@ -81,6 +85,9 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
   const { meResponse, currentWorkspace, loadingState, error } = useAppContext();
   const router = useRouter();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const { open: paletteOpen, setOpen: setPaletteOpen } = useCommandPalette();
+  const [createTaskOpen, setCreateTaskOpen] = useState(false);
+  const [standupOpen, setStandupOpen] = useState(false);
 
   // Still bootstrapping — show skeleton
   if (loadingState === "loading") {
@@ -132,6 +139,36 @@ function AppShellInner({ children }: { children: React.ReactNode }) {
           </div>
         </main>
       </div>
+
+      {/* Global command palette */}
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        onCreateTask={() => setCreateTaskOpen(true)}
+        onStandup={() => setStandupOpen(true)}
+      />
+
+      {/* Global create task modal (opened from command palette) */}
+      {currentWorkspace && (
+        <CreateTaskModal
+          open={createTaskOpen}
+          onClose={() => setCreateTaskOpen(false)}
+          workspaceId={currentWorkspace.id}
+          onCreated={(_task: Task) => {
+            setCreateTaskOpen(false);
+          }}
+        />
+      )}
+
+      {/* Global standup modal (opened from command palette) */}
+      {currentWorkspace && (
+        <StandupModal
+          open={standupOpen}
+          onClose={() => setStandupOpen(false)}
+          workspaceId={currentWorkspace.id}
+          userId={user?.id}
+        />
+      )}
     </div>
   );
 }

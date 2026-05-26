@@ -2,7 +2,7 @@
  * Drizzle schema — mirrors docs/DATABASE.md exactly.
  * Vector column uses drizzle-orm/pg-core's `vector` type (requires pgvector).
  */
-import { pgTable, text, timestamp, uuid, jsonb, index } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, uuid, jsonb, index, primaryKey } from "drizzle-orm/pg-core";
 import { vector } from "drizzle-orm/pg-core";
 import { EMBEDDING_DIMENSIONS, DEFAULT_WORKSPACE_SETTINGS, type WorkspaceSettings } from "@aicrm/shared";
 
@@ -16,7 +16,48 @@ export const users = pgTable("users", {
   // Discord user id — when set, lets the bot map @mentions to this app user
   // and auto-assign captured tasks.
   discordId: text("discord_id").unique(),
+  // IANA timezone (e.g. "America/Los_Angeles"). Used for per-user EOD scheduling.
+  timezone: text("timezone").notNull().default("UTC"),
 });
+
+// ── workspace_members ──────────────────────────────────────────────────────────
+// Multi-user workspace membership. The owner has role='owner' (auto-added);
+// invitees become role='member' on first /me after their invite is accepted.
+export const workspaceMembers = pgTable(
+  "workspace_members",
+  {
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    role: text("role").notNull().default("member"), // owner | member
+    joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.workspaceId, table.userId] }),
+    index("workspace_members_user_idx").on(table.userId),
+  ],
+);
+
+// ── workspace_invites ─────────────────────────────────────────────────────────
+// Pending email invites. On /me, any invite matching the auth user's email is
+// auto-accepted: a workspace_members row is inserted and the invite marked accepted.
+export const workspaceInvites = pgTable(
+  "workspace_invites",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    status: text("status").notNull().default("pending"), // pending | accepted | cancelled
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("workspace_invites_email_idx").on(table.email),
+    index("workspace_invites_ws_idx").on(table.workspaceId),
+  ],
+);
 
 // ── workspaces ─────────────────────────────────────────────────────────────────
 export const workspaces = pgTable(

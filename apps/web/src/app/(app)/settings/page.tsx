@@ -6,7 +6,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import { Save, Bell, Clock, Cpu, RefreshCw, AlertCircle, MessageSquare } from "lucide-react";
+import { Save, Bell, Clock, Cpu, RefreshCw, AlertCircle, MessageSquare, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,7 +20,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAppContext } from "@/lib/app-context";
-import { updateWorkspaceSettings, linkDiscordId, getErrorMessage } from "@/lib/api";
+import { updateWorkspaceSettings, linkDiscordId, updateTimezone, getErrorMessage } from "@/lib/api";
 import type { WorkspaceSettings } from "@aicrm/shared";
 
 // ── Form state (strings for controlled inputs) ─────────────────────────────
@@ -37,6 +37,29 @@ interface FieldErrors {
   workingHoursStart?: string;
   workingHoursEnd?: string;
 }
+
+const COMMON_TIMEZONES = [
+  "America/New_York",
+  "America/Chicago",
+  "America/Denver",
+  "America/Los_Angeles",
+  "America/Phoenix",
+  "America/Anchorage",
+  "America/Honolulu",
+  "America/Sao_Paulo",
+  "Europe/London",
+  "Europe/Paris",
+  "Europe/Berlin",
+  "Europe/Moscow",
+  "Asia/Dubai",
+  "Asia/Kolkata",
+  "Asia/Singapore",
+  "Asia/Tokyo",
+  "Asia/Shanghai",
+  "Asia/Seoul",
+  "Australia/Sydney",
+  "Pacific/Auckland",
+];
 
 const MODEL_OPTIONS = [
   { value: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash (default)" },
@@ -124,6 +147,23 @@ export default function SettingsPage() {
   const [discordInput, setDiscordInput] = useState<string>(currentDiscordId ?? "");
   const [savingDiscord, setSavingDiscord] = useState(false);
 
+  // Timezone state
+  const detectedTimezone = typeof Intl !== "undefined"
+    ? Intl.DateTimeFormat().resolvedOptions().timeZone
+    : "UTC";
+  const currentTimezone = meResponse?.user?.timezone ?? detectedTimezone;
+  const [selectedTimezone, setSelectedTimezone] = useState<string>(currentTimezone);
+  const [savingTimezone, setSavingTimezone] = useState(false);
+
+  const timezoneOptions: string[] = (() => {
+    try {
+      // Use Intl.supportedValuesOf when available (Chrome 99+, Firefox 110+)
+      return (Intl as unknown as { supportedValuesOf?: (key: string) => string[] }).supportedValuesOf?.("timeZone") ?? COMMON_TIMEZONES;
+    } catch {
+      return COMMON_TIMEZONES;
+    }
+  })();
+
   // Load settings from context (workspace already has settings embedded)
   const loadSettings = useCallback(() => {
     if (!currentWorkspace) return;
@@ -189,6 +229,21 @@ export default function SettingsPage() {
       toast.error(getErrorMessage(err, "Failed to save Discord ID."));
     } finally {
       setSavingDiscord(false);
+    }
+  }
+
+  // ── Timezone save handler ───────────────────────────────────────────────
+
+  async function handleSaveTimezone() {
+    setSavingTimezone(true);
+    try {
+      await updateTimezone(selectedTimezone);
+      toast.success("Timezone updated.");
+    } catch (err) {
+      setSelectedTimezone(currentTimezone);
+      toast.error(getErrorMessage(err, "Failed to save timezone."));
+    } finally {
+      setSavingTimezone(false);
     }
   }
 
@@ -556,6 +611,61 @@ export default function SettingsPage() {
                 </div>
                 <p id="discordUserId-hint" className="text-xs text-muted-foreground">
                   Numeric Discord user ID (18–19 digits). Leave blank to unlink.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* ── Timezone ───────────────────────────────────────────────── */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Globe
+                  className="h-4 w-4 text-muted-foreground"
+                  aria-hidden="true"
+                  strokeWidth={1.5}
+                />
+                <CardTitle className="text-base">Timezone</CardTitle>
+              </div>
+              <CardDescription>
+                Used for daily standup scheduling and working-hours reminders.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="timezone">Timezone</Label>
+                <div className="flex items-end gap-2">
+                  <select
+                    id="timezone"
+                    value={selectedTimezone}
+                    onChange={(e) => setSelectedTimezone(e.target.value)}
+                    className={cn(
+                      "flex min-h-[2.75rem] w-full max-w-sm rounded-md border border-input",
+                      "bg-transparent px-3 py-2 text-base text-foreground",
+                      "transition-colors duration-150",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                      "disabled:cursor-not-allowed disabled:opacity-50",
+                    )}
+                    aria-describedby="timezone-hint"
+                  >
+                    {timezoneOptions.map((tz) => (
+                      <option key={tz} value={tz}>{tz}</option>
+                    ))}
+                  </select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSaveTimezone}
+                    loading={savingTimezone}
+                    aria-label="Save timezone"
+                  >
+                    <Save className="h-3.5 w-3.5" aria-hidden="true" strokeWidth={1.5} />
+                    Save
+                  </Button>
+                </div>
+                <p id="timezone-hint" className="text-xs text-muted-foreground">
+                  Detected: <span className="font-medium">{detectedTimezone}</span>
                 </p>
               </div>
             </CardContent>

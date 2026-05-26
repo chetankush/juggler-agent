@@ -11,6 +11,7 @@ import {
   Users,
   Zap,
   X,
+  BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +30,11 @@ const navItems = [
     label: "Team",
     href: "/team",
     icon: Users,
+  },
+  {
+    label: "Analytics",
+    href: "/analytics",
+    icon: BarChart3,
   },
   {
     label: "Integrations",

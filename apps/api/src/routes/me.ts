@@ -1,14 +1,18 @@
 /**
  * Me route.
  *
- * GET /me — bootstraps the web app after auth.
- *   - Verifies the Supabase JWT via verifyAuth.
- *   - Upserts the `users` row from JWT claims (id, email, name).
+ * GET  /me              — bootstraps the web app after auth.
+ * PATCH /me/timezone    — update the authenticated user's IANA timezone.
+ * PATCH /me/discord     — link or unlink the user's Discord identity.
+ *
+ * GET /me behaviour:
+ *   - Upserts the `users` row.
+ *   - Auto-accepts pending workspace_invites for user.email.
  *   - Returns MeResponse: { user, workspaces, currentWorkspace }.
- *   - currentWorkspace = first workspace owned by the user, or null.
+ *   - workspaces = ALL workspaces the user is a member of (owned + invited).
  */
 import type { FastifyInstance } from "fastify";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import {
   DEFAULT_WORKSPACE_SETTINGS,
   type MeResponse,
@@ -17,7 +21,7 @@ import {
   type WorkspaceSettings,
 } from "@aicrm/shared";
 import { db } from "../db/client.js";
-import { users, workspaces } from "../db/schema.js";
+import { users, workspaces, workspaceMembers, workspaceInvites } from "../db/schema.js";
 import { verifyAuth } from "../lib/auth.js";
 import { supabase } from "../lib/supabase.js";
 
@@ -64,20 +68,51 @@ export async function meRoutes(app: FastifyInstance): Promise<void> {
       return reply.status(500).send({ error: "Failed to upsert user." });
     }
 
+    // Auto-accept any pending invites for this user's email.
+    const pendingInvites = await db
+      .select()
+      .from(workspaceInvites)
+      .where(
+        and(
+          eq(workspaceInvites.email, upsertedUser.email),
+          eq(workspaceInvites.status, "pending"),
+        ),
+      );
+
+    for (const invite of pendingInvites) {
+      // Insert member row (ignore if already exists).
+      await db
+        .insert(workspaceMembers)
+        .values({
+          workspaceId: invite.workspaceId,
+          userId: upsertedUser.id,
+          role: "member",
+        })
+        .onConflictDoNothing();
+
+      // Mark invite accepted.
+      await db
+        .update(workspaceInvites)
+        .set({ status: "accepted" })
+        .where(eq(workspaceInvites.id, invite.id));
+    }
+
     const user: User = {
       id: upsertedUser.id,
       email: upsertedUser.email,
       name: upsertedUser.name ?? null,
       discordId: upsertedUser.discordId ?? null,
+      timezone: upsertedUser.timezone,
     };
 
-    // Fetch all workspaces owned by this user (uses workspaces_owner_id_idx).
-    const workspaceRows = await db
-      .select()
-      .from(workspaces)
-      .where(eq(workspaces.ownerId, authUser.id));
+    // Fetch ALL workspaces the user is a member of (owned + invited).
+    const memberRows = await db
+      .select({ workspace: workspaces })
+      .from(workspaceMembers)
+      .innerJoin(workspaces, eq(workspaceMembers.workspaceId, workspaces.id))
+      .where(eq(workspaceMembers.userId, authUser.id));
 
-    const userWorkspaces = workspaceRows.map(toWorkspace);
+    const userWorkspaces = memberRows.map((r) => toWorkspace(r.workspace));
 
     const response: MeResponse = {
       user,
@@ -87,6 +122,31 @@ export async function meRoutes(app: FastifyInstance): Promise<void> {
 
     return reply.send(response);
   });
+
+  // ── PATCH /me/timezone — update the user's IANA timezone ────────────────────
+  app.patch<{ Body: { timezone?: unknown } }>(
+    "/me/timezone",
+    { preHandler: verifyAuth },
+    async (request, reply) => {
+      const userId = request.user!.id;
+      const tz = request.body?.timezone;
+
+      if (typeof tz !== "string" || !tz.trim()) {
+        return reply.status(400).send({ error: "timezone must be a non-empty string." });
+      }
+
+      // Validate the timezone string using the Intl API — it throws on invalid tz.
+      try {
+        new Intl.DateTimeFormat(undefined, { timeZone: tz }).format();
+      } catch {
+        return reply.status(400).send({ error: `Invalid IANA timezone: "${tz}".` });
+      }
+
+      await db.update(users).set({ timezone: tz.trim() }).where(eq(users.id, userId));
+
+      return reply.send({ ok: true, timezone: tz.trim() });
+    },
+  );
 
   // ── PATCH /me/discord — link or unlink the user's Discord identity ─────────
   app.patch<{ Body: { discordId?: string | null } }>(
