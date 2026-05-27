@@ -141,9 +141,9 @@ function StatusDonut({ active, blocked, completed }: DonutChartProps) {
 
   // Segment colors using CSS custom properties for dark/light support
   const segments = [
-    { label: "Active", value: active, color: "var(--color-primary, #7c83ff)" },
-    { label: "Blocked", value: blocked, color: "var(--color-warning, #fbbf24)" },
-    { label: "Completed", value: completed, color: "var(--color-success, #34d399)" },
+    { label: "Active", value: active, color: "hsl(var(--primary))" },
+    { label: "Blocked", value: blocked, color: "hsl(var(--warning))" },
+    { label: "Completed", value: completed, color: "hsl(var(--success))" },
   ];
 
   const R = 60; // radius
@@ -263,9 +263,9 @@ interface PriorityBarsProps {
 
 function PriorityBars({ high, medium, low }: PriorityBarsProps) {
   const bars = [
-    { label: "High", value: high, color: "var(--color-danger, #f87171)" },
-    { label: "Medium", value: medium, color: "var(--color-warning, #fbbf24)" },
-    { label: "Low", value: low, color: "var(--color-muted-fg, #8b949e)" },
+    { label: "High", value: high, color: "hsl(var(--danger))" },
+    { label: "Medium", value: medium, color: "hsl(var(--warning))" },
+    { label: "Low", value: low, color: "hsl(var(--muted-foreground))" },
   ];
   const max = Math.max(high, medium, low, 1);
 
@@ -387,7 +387,7 @@ function ThroughputChart({ data }: ThroughputChartProps) {
                   width={barW}
                   height={barH || 2}
                   rx={3}
-                  fill="var(--color-primary, #7c83ff)"
+                  fill="hsl(var(--primary))"
                   opacity={d.completed === 0 ? 0.25 : 0.85}
                 />
                 {/* Value label above bar */}

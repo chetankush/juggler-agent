@@ -380,7 +380,7 @@ export default function TasksPage() {
   return (
     <>
       {/* Page header */}
-      <div className="mb-8 flex items-start justify-between gap-4">
+      <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Tasks</h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -391,6 +391,7 @@ export default function TasksPage() {
           size="sm"
           aria-label="Create a new task manually"
           onClick={() => setCreateOpen(true)}
+          className="self-start sm:self-auto"
         >
           <Plus className="h-4 w-4" aria-hidden="true" strokeWidth={1.5} />
           New task
